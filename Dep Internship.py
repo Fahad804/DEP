@@ -4,6 +4,7 @@ import seaborn as sns
 import numpy as np
 import re
 import nltk
+import torch
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer,WordNetLemmatizer
@@ -16,7 +17,10 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from transformers import BertTokenizer, BertForSequenceClassification
-import torch
+from sklearn.impute import KNNImputer
+from keras.models import Model
+from keras.layers import Input, Dense
+from keras.optimizers import Adam
 
 
 
@@ -243,57 +247,142 @@ import torch
 #Task 3
 #Sentiment Analysis
 # Load the dataset
-DATA_PATH = 'Twitter_Data.csv'
+# DATA_PATH = 'Twitter_Data.csv'
+# df = pd.read_csv(DATA_PATH)
+#
+# # Ensure 'clean_text' is all strings and fill missing values
+# df['clean_text'] = df['clean_text'].astype(str).fillna('')
+#
+# # Text Processing Function
+# def text_processing(text):
+#     text = re.sub(r'\S*@\S*\s?', '', text)
+#     text = re.sub(r'#[\w-]+', '', text)
+#     text = re.sub(r'\d{2}[-/]\d{2}[-/]\d{4}', '', text)
+#     stop_words = set(stopwords.words('english'))
+#     tokens = word_tokenize(text)
+#     tokens = [word for word in tokens if word.lower() not in stop_words]
+#     return ' '.join(tokens)
+#
+# df['processed_text'] = df['clean_text'].apply(text_processing)
+#
+# # Initialize VADER sentiment analyzer
+# sia = SentimentIntensityAnalyzer()
+#
+# # Function to get sentiment
+# def get_sentiment(text):
+#     sentiment_score = sia.polarity_scores(text)
+#     compound_score = sentiment_score['compound']
+#     if compound_score > 0.05:
+#         return "Positive"
+#     elif compound_score < -0.05:
+#         return "Negative"
+#     else:
+#         return "Neutral"
+#
+# df['sentiment'] = df['processed_text'].apply(get_sentiment)
+#
+# # Count the sentiments
+# sentiment_counts = df['sentiment'].value_counts()
+#
+# # Plot the sentiment distribution
+# plt.figure(figsize=(8, 6))
+# plt.bar(sentiment_counts.index, sentiment_counts.values, color=['green', 'red', 'blue'])
+# plt.xlabel('Sentiment')
+# plt.ylabel('Counts')
+# plt.title('Sentiment Distribution')
+# plt.show()
+#
+# # Example usage
+# sample_text = "Life is a beautiful journey, full of ups and downs, but with a positive mindset, you can turn every obstacle into a stepping stone for success."
+# processed_text = text_processing(sample_text)
+# sentiment = get_sentiment(processed_text)
+# print(f"Sentiment: {sentiment}")
+
+
+#Task 4
+#Anomaly Detection in Network Traffic
+# Load the dataset
+DATA_PATH = 'C:/Users/Malik Danish Awan/Downloads/processed_data.csv'
 df = pd.read_csv(DATA_PATH)
 
-# Ensure 'clean_text' is all strings and fill missing values
-df['clean_text'] = df['clean_text'].astype(str).fillna('')
+#Impute missing values with a specific value (e.g., 0)
+df.fillna({'src2dst_packets': 0, 'src2dst_bytes': 0, 'dst2src_packets': 0, 'dst2src_bytes': 0}, inplace=True)
 
-# Text Processing Function
-def text_processing(text):
-    text = re.sub(r'\S*@\S*\s?', '', text)
-    text = re.sub(r'#[\w-]+', '', text)
-    text = re.sub(r'\d{2}[-/]\d{2}[-/]\d{4}', '', text)
-    stop_words = set(stopwords.words('english'))
-    tokens = word_tokenize(text)
-    tokens = [word for word in tokens if word.lower() not in stop_words]
-    return ' '.join(tokens)
+# Display the first few rows of the dataset
+print(df.head())
 
-df['processed_text'] = df['clean_text'].apply(text_processing)
+# Select relevant features for anomaly detection
+features = ['src2dst_packets', 'src2dst_bytes', 'dst2src_packets', 'dst2src_bytes']
+X = df[features].values
 
-# Initialize VADER sentiment analyzer
-sia = SentimentIntensityAnalyzer()
+# Standardize the data
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
 
-# Function to get sentiment
-def get_sentiment(text):
-    sentiment_score = sia.polarity_scores(text)
-    compound_score = sentiment_score['compound']
-    if compound_score > 0.05:
-        return "Positive"
-    elif compound_score < -0.05:
-        return "Negative"
-    else:
-        return "Neutral"
+#Check for Nans or Infs
+print(np.any(np.isnan(X_scaled)))  # Check if there are NaNs in the data
+print(np.any(np.isinf(X_scaled)))  # Check if there are Infs in the data
 
-df['sentiment'] = df['processed_text'].apply(get_sentiment)
 
-# Count the sentiments
-sentiment_counts = df['sentiment'].value_counts()
+# Split the data into training and test sets
+X_train, X_test = train_test_split(X_scaled, test_size=0.2, random_state=42)
 
-# Plot the sentiment distribution
-plt.figure(figsize=(8, 6))
-plt.bar(sentiment_counts.index, sentiment_counts.values, color=['green', 'red', 'blue'])
-plt.xlabel('Sentiment')
-plt.ylabel('Counts')
-plt.title('Sentiment Distribution')
+# Define the autoencoder model
+input_dim = X_train.shape[1]
+encoding_dim = 2  # You can adjust this dimension based on your needs
+
+input_layer = Input(shape=(input_dim,))
+encoder = Dense(encoding_dim, activation="relu")(input_layer)
+decoder = Dense(input_dim, activation="sigmoid")(encoder)
+autoencoder = Model(inputs=input_layer, outputs=decoder)
+
+# Compile the model
+autoencoder.compile(optimizer=Adam(learning_rate=1e-4), loss='mse')
+
+# Train the model
+history = autoencoder.fit(X_train, X_train,
+                          epochs=10,
+                          batch_size=32,
+                          validation_data=(X_test, X_test))
+
+# Plot training and validation loss
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
 plt.show()
 
-# Example usage
-sample_text = "Life is a beautiful journey, full of ups and downs, but with a positive mindset, you can turn every obstacle into a stepping stone for success."
-processed_text = text_processing(sample_text)
-sentiment = get_sentiment(processed_text)
-print(f"Sentiment: {sentiment}")
+# Predict and calculate reconstruction error
+X_pred = autoencoder.predict(X_scaled)
+mse = np.mean(np.power(X_scaled - X_pred, 2), axis=1)
 
+# Check for NaN values in mse
+if np.isnan(mse).any():
+    print("There are NaN values in the MSE array. Handling NaN values.")
+    # Handle NaN values by removing them
+    mse = mse[~np.isnan(mse)]
+
+# Set a threshold for anomaly detection (e.g., 95th percentile of MSE)
+threshold = np.percentile(mse, 95)
+
+# Identify anomalies
+anomalies = mse > threshold
+
+# Add anomaly labels to the dataframe
+df['anomaly'] = anomalies
+
+# Display some of the anomalies
+print(df[df['anomaly'] == True])
+
+# Plot the reconstruction error
+plt.figure(figsize=(10, 6))
+plt.hist(mse, bins=50, alpha=0.7, color='blue')
+plt.axvline(threshold, color='red', linestyle='--', linewidth=2)
+plt.xlabel('Reconstruction Error')
+plt.ylabel('Number of Samples')
+plt.title('Reconstruction Error Histogram')
+plt.show()
 
 
 
