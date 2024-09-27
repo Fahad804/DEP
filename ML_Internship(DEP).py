@@ -14,6 +14,10 @@ from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.naive_bayes import MultinomialNB
+from keras import layers, models
+from keras.preprocessing.image import ImageDataGenerator
+from keras.datasets import cifar10
+from keras.callbacks import EarlyStopping
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
@@ -245,132 +249,218 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 #Task3
 #Predicting Customer Churn
 # Load the dataset
-df = pd.read_csv('C:/Users\Malik Danish Awan\Downloads\WA_Fn-UseC_-Telco-Customer-Churn.csv')
+# df = pd.read_csv('C:/Users\Malik Danish Awan\Downloads\WA_Fn-UseC_-Telco-Customer-Churn.csv')
+#
+# #Handle missing values in TotalCharges
+# df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
+# df['TotalCharges'] = df['TotalCharges'].fillna(df['TotalCharges'].mean())
+#
+# #Convert categorical variables to numeric
+# categorical_cols = df.select_dtypes(include=['object']).columns
+#
+# # Use LabelEncoder for binary categories
+# le = LabelEncoder()
+#
+# # Apply LabelEncoder to binary categorical columns
+# binary_cols = ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']
+#
+# for col in binary_cols:
+#     df[col] = le.fit_transform(df[col])
+#
+# # Handle multi-class categorical columns with dummy variables
+# df = pd.get_dummies(df, columns=['InternetService', 'Contract', 'PaymentMethod'], drop_first=True)
+#
+# # Convert remaining categorical columns with multiple categories
+# # Replace 'No internet service' with 'No' for binary encoding
+# for col in ['MultipleLines', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies']:
+#     df[col] = df[col].replace({'No internet service': 'No'})
+#     df[col] = le.fit_transform(df[col])
+#
+# #Select features and target
+# X = df.drop(columns=['customerID', 'Churn'])
+# y = df['Churn']
+#
+# #Check for any remaining non-numeric values or NaN in features
+# print(X.dtypes)  # Check data types
+# print(X.isnull().sum())  # Check for NaN values
+#
+# #Convert any remaining non-numeric columns to numeric, if needed
+# X = X.apply(pd.to_numeric, errors='coerce')
+#
+# #Check for NaN values again and fill them
+# X.fillna(X.mean(), inplace=True)
+#
+# #Split the data into train and test sets
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+#
+# #Scale the features
+# scaler = StandardScaler()
+# X_train_scaled = scaler.fit_transform(X_train)
+# X_test_scaled = scaler.transform(X_test)
+#
+# #Train a Logistic Regression model
+# model = LogisticRegression(max_iter=1000)
+# model.fit(X_train_scaled, y_train)
+#
+# #Make predictions
+# y_pred = model.predict(X_test_scaled)
+#
+# #Evaluate the model
+# accuracy = accuracy_score(y_test, y_pred)
+# conf_matrix = confusion_matrix(y_test, y_pred)
+#
+# print(f"Accuracy: {accuracy}")
+# print(f"Confusion Matrix:\n{conf_matrix}")
+#
+# # New customer data (example input)
+# new_customer = {
+#     'gender': 'Female',
+#     'SeniorCitizen': 0,
+#     'Partner': 'Yes',
+#     'Dependents': 'No',
+#     'tenure': 12,
+#     'PhoneService': 'Yes',
+#     'MultipleLines': 'No',
+#     'InternetService': 'DSL',
+#     'OnlineSecurity': 'No',
+#     'OnlineBackup': 'Yes',
+#     'DeviceProtection': 'No',
+#     'TechSupport': 'Yes',
+#     'StreamingTV': 'No',
+#     'StreamingMovies': 'Yes',
+#     'Contract': 'Month-to-month',
+#     'PaperlessBilling': 'Yes',
+#     'PaymentMethod': 'Electronic check',
+#     'MonthlyCharges': 70.35,
+#     'TotalCharges': 840.5
+# }
+#
+#
+# # Convert the new data into the format used for the training data
+# def preprocess_new_data(customer_data):
+#     # Convert categorical fields into binary or one-hot encoding as in training
+#     df_new = pd.DataFrame([customer_data])
+#
+#     # Encode binary categorical features
+#     label_enc = LabelEncoder()
+#     df_new['gender'] = label_enc.fit_transform(df_new['gender'])
+#     df_new['Partner'] = label_enc.fit_transform(df_new['Partner'])
+#     df_new['Dependents'] = label_enc.fit_transform(df_new['Dependents'])
+#     df_new['PhoneService'] = label_enc.fit_transform(df_new['PhoneService'])
+#     df_new['PaperlessBilling'] = label_enc.fit_transform(df_new['PaperlessBilling'])
+#
+#     # One-hot encode other categorical features
+#     df_new = pd.get_dummies(df_new,
+#                             columns=['InternetService', 'Contract', 'PaymentMethod', 'MultipleLines', 'OnlineSecurity',
+#                                      'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV',
+#                                      'StreamingMovies'])
+#
+#     # Ensure the new data has the same columns as the training data
+#     missing_cols = set(X.columns) - set(df_new.columns)
+#     for col in missing_cols:
+#         df_new[col] = 0
+#     df_new = df_new[X.columns]
+#
+#     # Scale the data
+#     df_new_scaled = scaler.transform(df_new)
+#
+#     return df_new_scaled
+#
+#
+# # Preprocess new customer data
+# new_customer_processed = preprocess_new_data(new_customer)
+#
+# # Predict churn
+# churn_prediction = model.predict(new_customer_processed)
+#
+# # Output the result
+# if churn_prediction == 1:
+#     print("The customer is likely to churn.")
+# else:
+#     print("The customer is unlikely to churn.")
 
-#Handle missing values in TotalCharges
-df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
-df['TotalCharges'] = df['TotalCharges'].fillna(df['TotalCharges'].mean())
 
-#Convert categorical variables to numeric
-categorical_cols = df.select_dtypes(include=['object']).columns
+#Task 4
+#Image Classification
+# Load the CIFAR-10 dataset
+(X_train, y_train), (X_test, y_test) = cifar10.load_data()
 
-# Use LabelEncoder for binary categories
-le = LabelEncoder()
+# Normalize the pixel values to [0, 1]
+X_train, X_test = X_train / 255.0, X_test / 255.0
 
-# Apply LabelEncoder to binary categorical columns
-binary_cols = ['gender', 'Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']
+# Data augmentation
+datagen = ImageDataGenerator(
+    rotation_range=15,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    horizontal_flip=True
+)
 
-for col in binary_cols:
-    df[col] = le.fit_transform(df[col])
+# Fit the data augmentation generator on the training set
+datagen.fit(X_train)
 
-# Handle multi-class categorical columns with dummy variables
-df = pd.get_dummies(df, columns=['InternetService', 'Contract', 'PaymentMethod'], drop_first=True)
+# Define the CNN model
+model = models.Sequential([
+    # First convolutional layer
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)),
+    layers.MaxPooling2D((2, 2)),
 
-# Convert remaining categorical columns with multiple categories
-# Replace 'No internet service' with 'No' for binary encoding
-for col in ['MultipleLines', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies']:
-    df[col] = df[col].replace({'No internet service': 'No'})
-    df[col] = le.fit_transform(df[col])
+    # Second convolutional layer
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
 
-#Select features and target
-X = df.drop(columns=['customerID', 'Churn'])
-y = df['Churn']
+    # Third convolutional layer
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
 
-#Check for any remaining non-numeric values or NaN in features
-print(X.dtypes)  # Check data types
-print(X.isnull().sum())  # Check for NaN values
+    # Flattening and fully connected layers
+    layers.Flatten(),
+    layers.Dense(64, activation='relu'),
+    layers.Dropout(0.5),  # Dropout to reduce overfitting
+    layers.Dense(10, activation='softmax')  # 10 categories for CIFAR-10
+])
 
-#Convert any remaining non-numeric columns to numeric, if needed
-X = X.apply(pd.to_numeric, errors='coerce')
+# Compile the model
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
 
-#Check for NaN values again and fill them
-X.fillna(X.mean(), inplace=True)
+# Set up EarlyStopping to prevent overfitting
+early_stopping = EarlyStopping(monitor='val_loss', patience=3)
 
-#Split the data into train and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Train the model
+history = model.fit(datagen.flow(X_train, y_train, batch_size=64),
+                    epochs=5,  # Increase epochs to let the model train more
+                    validation_data=(X_test, y_test),
+                    callbacks=[early_stopping])
 
-#Scale the features
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+# Evaluate the model on test data
+test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
+print(f'Test accuracy: {test_acc}')
 
-#Train a Logistic Regression model
-model = LogisticRegression(max_iter=1000)
-model.fit(X_train_scaled, y_train)
+# Plot training & validation accuracy values
 
-#Make predictions
-y_pred = model.predict(X_test_scaled)
+plt.figure(figsize=(12, 4))
 
-#Evaluate the model
-accuracy = accuracy_score(y_test, y_pred)
-conf_matrix = confusion_matrix(y_test, y_pred)
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Model Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend(loc='lower right')
 
-print(f"Accuracy: {accuracy}")
-print(f"Confusion Matrix:\n{conf_matrix}")
+# Plot training & validation loss values
+plt.subplot(1, 2, 2)
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Model Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend(loc='upper right')
 
-# New customer data (example input)
-new_customer = {
-    'gender': 'Female',
-    'SeniorCitizen': 0,
-    'Partner': 'Yes',
-    'Dependents': 'No',
-    'tenure': 12,
-    'PhoneService': 'Yes',
-    'MultipleLines': 'No',
-    'InternetService': 'DSL',
-    'OnlineSecurity': 'No',
-    'OnlineBackup': 'Yes',
-    'DeviceProtection': 'No',
-    'TechSupport': 'Yes',
-    'StreamingTV': 'No',
-    'StreamingMovies': 'Yes',
-    'Contract': 'Month-to-month',
-    'PaperlessBilling': 'Yes',
-    'PaymentMethod': 'Electronic check',
-    'MonthlyCharges': 70.35,
-    'TotalCharges': 840.5
-}
+plt.show()
 
 
-# Convert the new data into the format used for the training data
-def preprocess_new_data(customer_data):
-    # Convert categorical fields into binary or one-hot encoding as in training
-    df_new = pd.DataFrame([customer_data])
-
-    # Encode binary categorical features
-    label_enc = LabelEncoder()
-    df_new['gender'] = label_enc.fit_transform(df_new['gender'])
-    df_new['Partner'] = label_enc.fit_transform(df_new['Partner'])
-    df_new['Dependents'] = label_enc.fit_transform(df_new['Dependents'])
-    df_new['PhoneService'] = label_enc.fit_transform(df_new['PhoneService'])
-    df_new['PaperlessBilling'] = label_enc.fit_transform(df_new['PaperlessBilling'])
-
-    # One-hot encode other categorical features
-    df_new = pd.get_dummies(df_new,
-                            columns=['InternetService', 'Contract', 'PaymentMethod', 'MultipleLines', 'OnlineSecurity',
-                                     'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV',
-                                     'StreamingMovies'])
-
-    # Ensure the new data has the same columns as the training data
-    missing_cols = set(X.columns) - set(df_new.columns)
-    for col in missing_cols:
-        df_new[col] = 0
-    df_new = df_new[X.columns]
-
-    # Scale the data
-    df_new_scaled = scaler.transform(df_new)
-
-    return df_new_scaled
 
 
-# Preprocess new customer data
-new_customer_processed = preprocess_new_data(new_customer)
-
-# Predict churn
-churn_prediction = model.predict(new_customer_processed)
-
-# Output the result
-if churn_prediction == 1:
-    print("The customer is likely to churn.")
-else:
-    print("The customer is unlikely to churn.")
